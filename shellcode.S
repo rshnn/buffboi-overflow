@@ -18,13 +18,14 @@
 	movb	%al,(STRLEN)(%esi)	/* null-terminate our string */
 	movl	%eax,(ENVP)(%esi)	/* set up null envp */
 
+	/* there are 10s and new line characters at the low address space of  %al*/
 
-    add     $5, %al         	/* add 5 low bytes to avoid the unlink syscall, is 10 or '\n' (newline) */
-    add     $5, %al         	/* add 5 low bytes to avoid the unlink syscall, is 10 or '\n' (newline) */
-    movl    %esi,%ebx       	/* syscall arg 2: string pathname */
-    leal    ARGV(%esi),%ecx     /* syscall arg 2: argv */
-    leal    ENVP(%esi),%edx     /* syscall arg 3: envp */
-    int $0x80           /* invoke syscall */
+    add     $5, %al         	/* add 5 low bytes */
+    add     $5, %al         	/* add 5 low bytes */
+    movl    %esi,%ebx       	/* arg 2: string pathname */
+    leal    ARGV(%esi),%ecx     /* arg 2: argv */
+    leal    ENVP(%esi),%edx     /* arg 3: envp */
+    int $0x80           		/* invoke syscall */
 
 
 	xorl	%ebx,%ebx			/* syscall arg 2: 0 */
