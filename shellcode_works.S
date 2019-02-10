@@ -25,11 +25,11 @@
 	pop %eax
 	push $0x02 
 	pop %ecx
-
 	orl %ecx, %eax
 	int	$0x80					/* invoke call */
 
-	movl $x10, %eax
+	push $0x10
+	pop %eax
 	int	$0x80
 
 	xorl	%ebx,%ebx			/* syscall arg 2: 0 */
