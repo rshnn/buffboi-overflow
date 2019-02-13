@@ -1,1 +1,16 @@
 ## Place your answers here.
+
+### exploit-2a.py 
+
+
+
+### exploit-2b.py
+
+
+
+
+### exploit-3.py 
+
+
+
+

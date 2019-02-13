@@ -3,15 +3,46 @@
 # desc
 #
 
-[zookd.c:1612]
-description goes here. for example, the 'buf' variable can be
-overwritten by the 'msg' variable because ...
+[http.c:282]
+In the function http_serve(), the 'pn' buffer can be overflown by the 'name' variable in line 282 of http.c.  The 'name' variable contains the URI from the http request. On line 282, the URI is concatenated to the end of 'pn' using strcat() without a bounds check.  This is the vulnerability.  An attacker can inject malicious code within via the HTTP request URI and overflow 'pn'.  The buffer 'pn' is only 1024 bytes, but 'name' can be much longer.  The interesting thing about this is that the attacker only needs to overwrite another local variable to redirect the control flow.  That variable is the function pointer 'handler', which sits adjacent to 'pn' on the stack.  The last call of the http_serve() function calls handler().  This is when control will be redirected if the 'pn' buffer is properly overflown.
 
-    <paste offending line(s) of code here>
+    void (*handler)(int, const char *) = http_serve_none;
+    char pn[1024] 
+    ...
+    strcat(pn, name);
 
-[http.c:1512]
-another description.
 
-    <paste offending line(s) of code here>
+[http.c:159]
+In the function http_request_headers(), the 'value' buffer can be overflown by the 'sp' variable.  The 'sp' variable contains part of the HTTP request headers.  The 'sp' variable is only a character pointer, so it can be of variable size.  The 'value' buffer is 512 bytes large.  On line 159, url_decode() is called.  This function is very vulnerable to buffer overflow.  It copies the contents of a source string into a destination string until a null terminator is reached in the source without bounds checking on the destination.  If the 'value' buffer is overflown enough by 'sp' to overwrite the return address on the http_request_headers() stack, an attacker can redirect control flow of the process.
+  
+    char value[512];
+    ...
+    url_decode(value, sp);
 
-# many more come here
+
+[http.c:165]
+In the function http_request_headers(), the 'envvar' buffer can be overflown by the 'buf' variable.  The 'buf' variable contains parts of the HTTP request header.  The 'envvar' buffer is 512 bytes, but the 'buf' variable is a character pointer that can be of variable length.  In this case, it is the length of a line read from the HTTP request header.  In line 165, sprintf() is called with 'envvar' and 'buf'.  The contents of 'buf' are written into 'envvar' without bounds checking.  This is a vulnerability.  An attacker can take exploit this by overflowing the 'envvar' buffer to overwrite the return address for the http_request_headers() function.  Thus, when the function returns, the control flow will be hijacked.  
+
+    char envvar[512];
+    ...
+    sprintf(envvar, "HTTP_%s", buf);
+
+
+[http.c:105]
+In the function http_request_line(), the 'reqpath' buffer can be overflown by the variable 'sp1'.  The buffer is initialized in the stack of zookd.c:process_client() on line zookd.c:105 with 2048 bytes.  The buffer 'reqpath' is passed into http_request_line() on line zookd.c:109.  Within the callee function, the buffer 'reqpath' is passed into url_decode() with 'sp1'.  the variable 'sp1' contains the URI from the HTTP request. As mentioned in earlier, url_decode is vulnerable because it copies without doing bounds checking on the destination. The contents of 'sp1' are copied into 'reqpath' without bounds checking on 'reqpath'.  Thus, an attacker can exploit this by overflowing 'reqpath' to overwrite the return address of the process_client() function.  When the process_client() function returns, the control flow will be hijacked.  
+
+    char reqpath[2048];
+    ...
+    if ((errmsg = http_request_line(fd, reqpath, env, &env_len)))
+    ...
+    url_decode(reqpath, sp1);
+
+
+[http.c:358]
+In the http_serve_directory() function, the buffer 'name' can be overwritten by the 'pn' variable. The 'name' variable is 1024 bytes large and the 'pn' variable is a pointer to the string that represents the HTTP request URI.  Thus, 'pn' can be of an artbitrary size larger than 'name'.  On line 358, 'name' and 'pn' are passed into dir_join().  This function is vulnerable.  It utilizes strcpy() to copy contents from a source into a destination without bounds check on the destination.  In this case, the contents of 'pn' (and some extra stuff from 'indices') is copied into the buffer 'name' without bounds check on 'name'.  An attacker can exploit this by overflowing the 'name' buffer via 'pn' to overwrite the return address of the http_serve_directory() stack.  The control flow is hijacked When the http_serve_directory() function returns.  
+
+    char name[1024];
+    ...
+    dir_join(name, pn, indices[i]);
+    ...
+    strcpy(dst, dirname);
