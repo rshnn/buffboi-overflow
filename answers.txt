@@ -1,16 +1,47 @@
 ## Place your answers here.
 
 ### exploit-2a.py 
+See bugs.txt [http.c:282]
+See notes.pdf for images.  
 
+In this exploit, we overflow the 'pn' buffer just enough to overwrite another local variabe:  'handler'.  This variable is a function pointer that is invoked near the end of http_serve().  If we overflow the buffer just 4 additional bytes, we can overwrite the 'handler' pointer and the program will seg-fault when it tries to call it.  This occurs on line http.c:296.    
+
+The buffer is overflown using the HTTP request's URI.  The URI gets concatenated to the buffer 'pn' on line http.c:282.  Before that, the current path is added to 'pn'.  In this instance, that is the string "/home/httpd/lab/".  We note the length of this path and substract it from the total length of the payload we want to inject.  The resulting payload size is (size_of_buffer - len(path_name) + overflow_amount).  That is, (1024 - 16 + 4).  In this exploit, I fill the payload with all 'k'.  The hex value for 'k' is 0x6B, so we can look out for this in GDB.   
+
+On run, the function pointer 'handler' will be corrupted and the process will seg-fault.  
 
 
 ### exploit-2b.py
+See bugs.txt [http.c:159]
+See notes.pdf for images.  
+
+In this exploit, we overflow the 'value' buffer using the variable 'sp'.  The overwrite occurs on line http.c:159 within the function url_decode().  We want to overflow the 'value' buffer enough to overwrite the return address of the http_request_headers() function.  Using GDB to figure out what %ebp is and the address of the 'value' buffer, we can determine that we need to write 540 total bytes (that is, overflow 20 bytes).  The last 4 of those overflown bytes will be overwriting the return address.  
+
+The buffer is overflown using the HTTP request's headers.  There are a few conditional statements that check the validity of the headers before we can reach the vulnerable line (http.c:159).  To pass these checks, we prepend our payload with what looks like a valid header: "HOST: 192.168.56.102:8080".  Following this string, we append our payload.  The actual contents of the 'sp' variable are starting from the "192...".  We need to account for this in our payload length.  The resulting payload size is (total_overwrite - len(second_part_of_decoy_header)).  That is, (540 - 19).  We fill the payload with 'k' again.      
+
+On run, the return address to the http_request_headers() function will be corrupted and the process will seg-fault.  
+
 
 
 
 
 ### exploit-3.py 
+See bugs.txt [http.c:159]
+See notes.pdf for images.  
 
+We expand on the implementation of exploit-2b.  
+Instead of filling the payload with 'k', this time, we embed our shellcode within the payload.  We also want the last 4 bytes of our payload to contain the address to the start of the shellcode.  This will simply be the address of value[len(second_part_of_decoy_header)].  Using gdb, we can see that this is 0xbffff397.  The space in the payload between the shellcode and the shellcode address is filled with junk.  To summarize, the payload looks like: payload = header_intro_1 + header_intro_2 + shellcode + garbage + shellcode_addr.  
 
+The shellcode is such that it calls the syscall unlink().  Although it worked for ./run_shellcode shellcode.bin, there was initial issues when I tried injecting the code directly into the zookd process.  I learned that this was because there were white-spaces in my shellcode, and the string.h library functions were viewing them as null terminators.  I revised the shellcode to fill in all white spaces to solve this issue.  
 
+On run, the payload is copied into the 'value' buffer on line http.c:159.  Once this is complete, the shellcode will be at address 0xbffff397 and the return address of the http_request_headers() function will be overwritten to point to 0xbffff397.  When the function returns, the shellcode will run.  The shellcode unlinks the file "/home/httpd/grades.txt" and exits.   
 
+Can this exploit be used for the other vulnerabilities identified in part 1?
+
+[http.c:282] - Yes. The buffer is large enough for the shellcode and return address (shellcode is only ~80 bytes).  We only need change the variable 'handler' to point to the address of the shellcode instead of a return address.  
+
+[http.c:165] - Sorta.  This exploit is in the same call stack as 'value'.  We would need to increase the size of the payload to reach the return address. Note that the buffer for 'envvar' is overflown before the buffer for 'value'.  Thus any damage that the 'envvar' overflow does, the 'value' overflow will overwrite.  That is, the shellcode address might be overwriten by the 'value' overflow. To resolve this, we can repeat the shellcode address to the last N lines of the payload and hope that the alignment works out.  If it does, the exploit will be successful.            
+
+[http.c:105] - Yes, this should work.  The buffer is large enough for the shellcode and return address.  We would only need to carefully resize the payload. 
+
+[http.c:358] - Yes, this should work.  Again, the buffer is large enough for the shellcode and return address.  The payload must be crafted to suit the situation.   
