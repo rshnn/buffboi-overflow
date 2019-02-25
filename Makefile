@@ -40,61 +40,28 @@ run-shellcode: %: %.o
 	objcopy -S -O binary -j .text $< $@
 
 
-
 # For staff use only
 staff-bin: zookd zookd-exstack zookd-nxstack
 	tar cvzf bin.tar.gz $^
 
-.PHONY: check-bugs
-check-bugs:
-	./check-bugs.py bugs.txt
-
-.PHONY: check-crash
-check-crash: bin.tar.gz exploit-2a.py exploit-2b.py shellcode.bin
-	./check-bin.sh
-	./check-ldcache.sh
-	tar xf bin.tar.gz
-	./check-part2.sh zookd-exstack ./exploit-2a.py
-	./check-part2.sh zookd-nxstack ./exploit-2b.py
-
-.PHONY: check-exstack
-check-exstack: bin.tar.gz exploit-3.py shellcode.bin
-	./check-bin.sh
-	./check-ldcache.sh
-	tar xf bin.tar.gz
-	./check-part3.sh zookd-exstack ./exploit-3.py
-
 .PHONY: check-libc
-check-libc: bin.tar.gz exploit-4a.py exploit-4b.py shellcode.bin
-	./check-bin.sh
+check-libc: bin.tar.gz exploit-libc1.py exploit-libc2.py
 	./check-ldcache.sh
 	tar xf bin.tar.gz
-	./check-part3.sh zookd-nxstack ./exploit-4a.py
-	./check-part3.sh zookd-nxstack ./exploit-4b.py
-
-.PHONY: check-crash-fixed
-check-crash-fixed: clean $(PROGS) exploit-2a.py exploit-2b.py shellcode.bin
-	./check-part2.sh zookd-exstack ./exploit-2a.py
-	./check-part2.sh zookd-exstack ./exploit-2b.py
-
-.PHONY: check-exstack-fixed
-check-exstack-fixed: clean $(PROGS) exploit-3.py shellcode.bin
-	./check-part3.sh zookd-exstack ./exploit-3.py
+	./check-part3.sh zookd-nxstack ./exploit-libc1.py
+	./check-part3.sh zookd-nxstack ./exploit-libc2.py
 
 .PHONY: check-libc-fixed
-check-libc-fixed: clean $(PROGS) exploit-4a.py exploit-4b.py shellcode.bin
-	./check-part3.sh zookd-nxstack ./exploit-4a.py
-	./check-part3.sh zookd-nxstack ./exploit-4b.py
-
-.PHONY: check-fixed
-check-fixed: check-crash-fixed check-exstack-fixed check-libc-fixed
+check-libc-fixed: clean $(PROGS) exploit-libc1.py exploit-libc2.py
+	./check-part3.sh zookd-nxstack ./exploit-libc1.py
+	./check-part3.sh zookd-nxstack ./exploit-libc2.py
 
 .PHONY: check-zoobar
 check-zoobar:
 	./check_zoobar.py
 
 .PHONY: check
-check: check-zoobar check-bugs check-crash check-exstack check-libc
+check: check-zoobar check-libc
 
 
 .PHONY: fix-flask
@@ -105,29 +72,16 @@ fix-flask: fix-flask.sh
 clean:
 	rm -f *.o *.pyc *.bin $(PROGS)
 
+.PHONY: check-version
+check-version:
+	$(info This Makefile is for assignment 2)
+	@:
 
-lab%-handin.tar.gz: clean
-	tar cf - `find . -type f | grep -v '^\.*$$' | grep -v '/CVS/' | grep -v '/\.svn/' | grep -v '/\.git/' | grep -v 'lab[0-9].*\.tar\.gz' | grep -v '/submit.token$$' | grep -v libz3str.so` | gzip > $@
+
+assignment%-handin.tar.gz: clean
+	tar cf - `find . -type f | grep -v '^\.*$$' | grep -v '/CVS/' | grep -v '/\.svn/' | grep -v '/\.git/' | grep -v 'assignment[0-9].*\.tar\.gz' | grep -v '/submit.token$$' | grep -v libz3str.so` | gzip > $@
 
 .PHONY: prepare-submit
-prepare-submit: lab1-handin.tar.gz
+prepare-submit: assignment2-handin.tar.gz
 
-.PHONY: prepare-submit-a
-prepare-submit-a: lab1a-handin.tar.gz
-
-.PHONY: prepare-submit-b
-prepare-submit-b: lab1b-handin.tar.gz
-
-.PHONY: submit-a
-submit-a: lab1a-handin.tar.gz
-	./submit.py $<
-
-.PHONY: submit-b
-submit-b: lab1b-handin.tar.gz
-	./submit.py $<
-
-.PHONY: submit
-submit: lab1-handin.tar.gz
-	./submit.py $<
-
-.PRECIOUS: lab1-handin.tar.gz
+.PRECIOUS: assignment2-handin.tar.gz
